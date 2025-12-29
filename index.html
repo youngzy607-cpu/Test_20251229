@@ -9,6 +9,9 @@
 </head>
 <body>
     <div class="container">
+        <!-- 退出全屏提示 -->
+        <div class="exit-hint">双击屏幕退出全屏</div>
+
         <div class="card">
             <div class="header">
                 <span class="status-dot"></span>
@@ -18,6 +21,11 @@
             <div id="welcome-text" contenteditable="true" class="welcome-text">
                 欢迎
             </div>
+
+            <!-- 新增全屏演示按钮 -->
+            <button id="fullscreen-btn" class="fullscreen-btn" title="全屏展示模式">
+                📺 全屏/演示模式
+            </button>
 
             <p class="instruction">
                 👆 点击上方文字可直接修改 <br>

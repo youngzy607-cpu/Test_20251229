@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeText = document.getElementById('welcome-text');
     const shareBtn = document.getElementById('share-btn');
     const qrContainer = document.getElementById('qrcode-container');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const body = document.body;
 
     // 初始化：检查 URL Hash 是否有内容
     function initFromHash() {
@@ -16,6 +18,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // 全屏模式切换
+    function toggleFullscreen() {
+        body.classList.toggle('presentation-mode');
+        // 尝试触发浏览器原生全屏
+        if (body.classList.contains('presentation-mode')) {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen blocked', e));
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(e => console.log('Exit fullscreen blocked', e));
+            }
+        }
+    }
+
+    // 绑定全屏按钮
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    // 双击退出全屏
+    document.addEventListener('dblclick', (e) => {
+        if (body.classList.contains('presentation-mode')) {
+            toggleFullscreen();
+        }
+    });
 
     // 监听输入：更新 URL Hash
     welcomeText.addEventListener('input', () => {
