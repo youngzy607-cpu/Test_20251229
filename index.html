@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欢迎页 - 同步展示</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="lib/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <span class="status-dot"></span>
+                <span class="status-text">实时链接模式</span>
+            </div>
+            
+            <div id="welcome-text" contenteditable="true" class="welcome-text">
+                欢迎
+            </div>
+
+            <p class="instruction">
+                👆 点击上方文字可直接修改 <br>
+                修改后点击下方按钮生成二维码分享
+            </p>
+
+            <button id="share-btn" class="share-btn">
+                生成分享二维码
+            </button>
+
+            <div id="qrcode-container"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
