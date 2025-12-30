@@ -163,55 +163,63 @@
             ).join('');
         }
 
-        // 生成扑克牌 UI
+        // 生成扑克牌 UI (简化版：只显示点数)
         const ballGrid = document.getElementById('ball-grid');
-        const allCards = window.kellyLogic.cards; // 使用逻辑库中的牌
+        const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'Small', 'Big'];
         
-        allCards.forEach(card => {
+        ranks.forEach(val => {
             const ball = document.createElement('div');
-            ball.className = 'ball card-item'; // 复用 ball 样式但增加 card-item
-            ball.dataset.id = card.id;
+            ball.className = 'ball card-item'; 
+            ball.dataset.value = val;
             
-            // 显示内容
-            let display = card.value;
+            // 显示样式
+            let display = val;
             let color = 'black';
-            if (['H', 'D'].includes(card.suit)) color = '#e74c3c'; // Red
-            if (['S', 'C'].includes(card.suit)) color = 'black';
-            if (card.suit === 'J') color = card.value === 'Big' ? '#e74c3c' : 'black';
-            
             let suitIcon = '';
-            if (card.suit === 'S') suitIcon = '♠';
-            if (card.suit === 'H') suitIcon = '♥';
-            if (card.suit === 'C') suitIcon = '♣';
-            if (card.suit === 'D') suitIcon = '♦';
-            if (card.suit === 'J') suitIcon = '🃏';
+
+            // 给个通用样式，比如红黑相间或者中性色
+            // 为了美观，可以用一个通用的牌面样式
+            if (val === 'Small') { display = 'Small'; color = 'black'; suitIcon = '🃏'; }
+            else if (val === 'Big') { display = 'Big'; color = '#e74c3c'; suitIcon = '🃏'; }
+            else {
+                // 普通牌，显示数字即可
+                // 为了稍微好看点，如果是红色的牌点(如红桃/方块)，这里没法区分，就用黑色吧
+                // 或者 A-K 统一黑色
+            }
             
-            ball.innerHTML = `<span style="color:${color}">${suitIcon}${display}</span>`;
-            ball.onclick = () => toggleBall(card.id);
+            ball.innerHTML = `<span style="color:${color}; font-size: 1.1rem;">${suitIcon}${display}</span>`;
+            ball.onclick = () => toggleBall(val);
             ballGrid.appendChild(ball);
         });
 
-        function toggleBall(id) {
-            const ballElem = document.querySelector(`.ball[data-id="${id}"]`);
+        function toggleBall(value) {
+            const ballElem = document.querySelector(`.ball[data-value="${value}"]`);
             
-            if (pocketedBalls.has(id)) {
-                // 撤销打进 (暂不支持，MVP 简化逻辑：一旦打进就打进了)
+            if (pocketedBalls.has(value)) {
+                // 暂不支持撤销
                 return; 
             } else {
-                pocketedBalls.add(id);
+                pocketedBalls.add(value);
                 ballElem.classList.add('pocketed');
                 
-                // 获取卡牌值
-                let cardValue = null;
-                const cardObj = window.kellyLogic.cards.find(c => c.id === id);
-                if (cardObj) cardValue = cardObj.value;
-
                 // 广播球已打进，带上 value
-                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { ball: id, value: cardValue });
+                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { value: value });
                 
-                // 更新监控视图
-                updateMonitor();
+                // 房主手牌本地更新
+                updateHostHandUI(value);
             }
+        }
+
+        function updateHostHandUI(value) {
+             const hostHand = players['HOST_PLAYER']?.hand || [];
+             hostHand.forEach(card => {
+                 if (card.value === value) {
+                     const cardElem = document.getElementById(`host-card-${card.id}`);
+                     if(cardElem) {
+                         cardElem.classList.add('pocketed');
+                     }
+                 }
+             });
         }
 
         function startGame() {
@@ -290,7 +298,7 @@
                 if (card.suit === 'D') suitIcon = '♦';
                 if (card.suit === 'J') suitIcon = '🃏';
                 
-                const isPocketed = pocketedBalls.has(card.id);
+                const isPocketed = pocketedBalls.has(card.value);
 
                 return `
                 <div class="hand-card ${isPocketed ? 'pocketed' : ''}" id="host-card-${card.id}" style="color: ${color}">
@@ -303,19 +311,8 @@
         // 监听 BALL_POCKETED 来更新房主手牌 UI
         window.gameClient.on('BALL_POCKETED', (payload) => {
              // 房主自己界面也得更新打叉状态
-             const { ball, value } = payload;
-             
-             // 逻辑升级：只要 value 相同，就都打叉
-             // 遍历房主手牌，找到所有 value 相同的牌
-             const hostHand = players['HOST_PLAYER']?.hand || [];
-             hostHand.forEach(card => {
-                 if (card.value === value) {
-                     const cardElem = document.getElementById(`host-card-${card.id}`);
-                     if(cardElem) {
-                         cardElem.classList.add('pocketed');
-                     }
-                 }
-             });
+             const { value } = payload;
+             if(value) updateHostHandUI(value);
         });
     </script>
 </body>

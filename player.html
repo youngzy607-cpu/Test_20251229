@@ -134,6 +134,7 @@
         });
 
         window.gameClient.on('BALL_POCKETED', (payload) => {
+            console.log('Received BALL_POCKETED', payload);
             const { ball, value } = payload;
             markBallPocketed(ball, value);
         });
