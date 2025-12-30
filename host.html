@@ -201,8 +201,13 @@
                 pocketedBalls.add(id);
                 ballElem.classList.add('pocketed');
                 
-                // 广播球已打进
-                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { ball: id });
+                // 获取卡牌值
+                let cardValue = null;
+                const cardObj = window.kellyLogic.cards.find(c => c.id === id);
+                if (cardObj) cardValue = cardObj.value;
+
+                // 广播球已打进，带上 value
+                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { ball: id, value: cardValue });
                 
                 // 更新监控视图
                 updateMonitor();
@@ -298,12 +303,19 @@
         // 监听 BALL_POCKETED 来更新房主手牌 UI
         window.gameClient.on('BALL_POCKETED', (payload) => {
              // 房主自己界面也得更新打叉状态
-             // 其实 toggleBall 已经处理了 pocketedBalls，这里主要刷新手牌区域
-             const { ball } = payload;
-             const cardElem = document.getElementById(`host-card-${ball}`);
-             if(cardElem) {
-                 cardElem.classList.add('pocketed');
-             }
+             const { ball, value } = payload;
+             
+             // 逻辑升级：只要 value 相同，就都打叉
+             // 遍历房主手牌，找到所有 value 相同的牌
+             const hostHand = players['HOST_PLAYER']?.hand || [];
+             hostHand.forEach(card => {
+                 if (card.value === value) {
+                     const cardElem = document.getElementById(`host-card-${card.id}`);
+                     if(cardElem) {
+                         cardElem.classList.add('pocketed');
+                     }
+                 }
+             });
         });
     </script>
 </body>

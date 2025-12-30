@@ -134,8 +134,8 @@
         });
 
         window.gameClient.on('BALL_POCKETED', (payload) => {
-            const { ball } = payload;
-            markBallPocketed(ball);
+            const { ball, value } = payload;
+            markBallPocketed(ball, value);
         });
 
         window.gameClient.on('RESET', () => {
@@ -166,13 +166,25 @@
             `}).join('');
         }
 
-        function markBallPocketed(id) {
-            const card = document.getElementById(`card-${id}`);
-            if (card) {
-                card.classList.add('pocketed');
-                // 可以加个震动反馈
-                if (navigator.vibrate) navigator.vibrate(200);
+        function markBallPocketed(id, value) {
+            // 逻辑升级：只要 value 相同，就都打叉
+            // 遍历我的手牌，找到所有 value 相同的牌
+            
+            // 如果 payload 没有带 value (兼容旧版或直接 ID 匹配)，先尝试 ID 匹配
+            const targetCard = document.getElementById(`card-${id}`);
+            if (targetCard) targetCard.classList.add('pocketed');
+
+            // 如果有 value，则匹配同数值的所有牌
+            if (value) {
+                myHand.forEach(card => {
+                    if (card.value === value) {
+                         const c = document.getElementById(`card-${card.id}`);
+                         if (c) c.classList.add('pocketed');
+                    }
+                });
             }
+
+            if (navigator.vibrate) navigator.vibrate(200);
         }
     </script>
 </body>
