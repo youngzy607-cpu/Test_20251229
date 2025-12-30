@@ -53,10 +53,14 @@
 
             // 连接 MQTT
             window.gameClient.connect(() => {
+                console.log('Player connected, publishing JOIN to:', TOPIC_JOIN);
                 window.gameClient.subscribe(TOPIC_CMD);
                 
-                // 发送加入消息
-                window.gameClient.publish(TOPIC_JOIN, 'JOIN', { name: name });
+                // 延时一点确保订阅成功
+                setTimeout(() => {
+                    // 发送加入消息
+                    window.gameClient.publish(TOPIC_JOIN, 'JOIN', { name: name });
+                }, 500);
             });
         }
 

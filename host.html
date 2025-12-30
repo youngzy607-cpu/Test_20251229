@@ -6,6 +6,7 @@
     <title>房主控制台 - Kelly Pool</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="lib/mqtt.min.js"></script>
+    <script src="lib/qrcode.min.js"></script>
     <script src="js/mqtt-client.js"></script>
     <script src="js/game-logic.js"></script>
 </head>
@@ -17,6 +18,11 @@
 
         <!-- 阶段1: 等待玩家 -->
         <div id="setup-phase">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div id="qrcode" style="display: inline-block; padding: 10px; background: white; border-radius: 8px;"></div>
+                <p style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">扫码加入房间</p>
+            </div>
+
             <h4>已加入玩家 (<span id="player-count">0</span>)</h4>
             <ul id="player-list" class="player-list">
                 <!-- <li>Player 1 <span class="status-badge online">在线</span></li> -->
@@ -51,6 +57,14 @@
         if (!roomId) window.location.href = 'index.html';
         document.getElementById('room-display').innerText = roomId;
 
+        // 生成二维码
+        const joinUrl = window.location.href.replace('host.html', 'index.html') + '?room=' + roomId;
+        new QRCode(document.getElementById("qrcode"), {
+            text: joinUrl,
+            width: 128,
+            height: 128
+        });
+
         const players = {}; // { clientId: { name: 'xxx', hand: [] } }
         let pocketedBalls = new Set();
         
@@ -60,6 +74,7 @@
 
         // 初始化 MQTT
         window.gameClient.connect(() => {
+            console.log('Host subscribing to:', TOPIC_JOIN);
             window.gameClient.subscribe(TOPIC_JOIN);
             
             // 广播自己是 Host，让刚进来的玩家知道游戏状态
@@ -68,13 +83,17 @@
 
         // 消息处理
         window.gameClient.on('JOIN', (payload) => {
+            console.log('Host received JOIN:', payload);
             const { sender, name } = payload;
+            
+            // 确保不把自己算进去（虽然 host 页面不发 JOIN，但以防万一）
+            // 注意：sender 是发送者的 clientId
+            
             if (!players[sender]) {
                 players[sender] = { name: name || 'Player ' + sender.substr(0,4), hand: [] };
                 updatePlayerList();
                 
-                // 如果游戏已经开始，可能需要重发状态给重连的玩家
-                // 这里 MVP 暂简化：中途加入只能等下一局
+                // 可选：回发一个 ACK 确认收到，或者广播当前人数
             }
         });
 
