@@ -2,9 +2,9 @@
 // 使用 broker.emqx.io 公共服务器
 
 const MQTT_CONFIG = {
-    // 使用 WebSocket 连接，更适合浏览器
+    // 使用 Secure WebSocket (WSS) 以支持 HTTPS 页面
     host: 'broker.emqx.io',
-    port: 8083,
+    port: 8084, // WSS 端口
     path: '/mqtt',
     // 加上随机 ID 避免冲突
     clientId: 'kelly_pool_' + Math.random().toString(16).substr(2, 8)
@@ -15,17 +15,34 @@ class GameClient {
         this.client = null;
         this.callbacks = {};
         this.connected = false;
+        this.connectionTimer = null;
     }
 
     connect(onConnect) {
-        console.log('Connecting to MQTT broker...');
-        this.client = mqtt.connect(`ws://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}${MQTT_CONFIG.path}`, {
-            clientId: MQTT_CONFIG.clientId
+        console.log('Connecting to MQTT broker (WSS)...');
+        // 显式使用 wss:// 协议
+        this.client = mqtt.connect(`wss://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}${MQTT_CONFIG.path}`, {
+            clientId: MQTT_CONFIG.clientId,
+            keepalive: 60,
+            reconnectPeriod: 5000
         });
+        
+        // 设置连接超时检测
+        this.connectionTimer = setTimeout(() => {
+            if (!this.connected) {
+                console.error('Connection timed out');
+                const statusElem = document.getElementById('status-text');
+                if (statusElem) {
+                    statusElem.innerText = '❌ 连接超时 (请刷新)';
+                    statusElem.style.color = 'red';
+                }
+            }
+        }, 10000);
 
         this.client.on('connect', () => {
             console.log('Connected to MQTT broker');
             this.connected = true;
+            clearTimeout(this.connectionTimer);
             if (onConnect) onConnect();
         });
 
