@@ -14,19 +14,28 @@
     <div class="container">
         <div class="header">
             <h3>房主控制台 | 房间: <span id="room-display">...</span></h3>
+            <div id="mqtt-status" style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                MQTT: <span id="status-text">连接中...</span>
+            </div>
         </div>
 
         <!-- 阶段1: 等待玩家 -->
         <div id="setup-phase">
             <div style="text-align: center; margin-bottom: 20px;">
                 <div id="qrcode" style="display: inline-block; padding: 10px; background: white; border-radius: 8px;"></div>
-                <p style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">扫码加入房间</p>
+                <p style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">扫码或复制链接加入</p>
+                <input type="text" id="share-link" readonly style="font-size: 0.8rem; padding: 5px; width: 80%; background: #222; border: 1px solid #444; color: #aaa;" onclick="this.select()">
             </div>
 
             <h4>已加入玩家 (<span id="player-count">0</span>)</h4>
             <ul id="player-list" class="player-list">
                 <!-- <li>Player 1 <span class="status-badge online">在线</span></li> -->
             </ul>
+            
+            <div id="host-logs" style="height: 100px; overflow-y: auto; background: #222; font-size: 0.7rem; color: #888; padding: 5px; margin: 10px 0; border-radius: 4px;">
+                <div>日志系统就绪...</div>
+            </div>
+
             <div class="input-group">
                 <label>每人发牌数 (0=自动平均):</label>
                 <input type="number" id="card-count" value="0" min="0" max="15">
@@ -59,6 +68,8 @@
 
         // 生成二维码
         const joinUrl = window.location.href.replace('host.html', 'index.html') + '?room=' + roomId;
+        document.getElementById('share-link').value = joinUrl; // 显示链接方便复制
+        
         new QRCode(document.getElementById("qrcode"), {
             text: joinUrl,
             width: 128,
@@ -68,22 +79,40 @@
         const players = {}; // { clientId: { name: 'xxx', hand: [] } }
         let pocketedBalls = new Set();
         
+        function log(msg) {
+            const logs = document.getElementById('host-logs');
+            const div = document.createElement('div');
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
         // Topic 定义
         const TOPIC_JOIN = `kp/${roomId}/join`;
         const TOPIC_CMD = `kp/${roomId}/cmd`;
 
         // 初始化 MQTT
         window.gameClient.connect(() => {
-            console.log('Host subscribing to:', TOPIC_JOIN);
+            document.getElementById('status-text').innerText = '✅ 已连接';
+            document.getElementById('status-text').style.color = '#2ecc71';
+            log(`Host subscribing to: ${TOPIC_JOIN}`);
             window.gameClient.subscribe(TOPIC_JOIN);
-            
-            // 广播自己是 Host，让刚进来的玩家知道游戏状态
-            // 简单起见，主要靠玩家发 JOIN 触发
         });
+        
+        // 监听断线
+        if (window.gameClient.client) {
+            window.gameClient.client.on('offline', () => {
+                document.getElementById('status-text').innerText = '❌ 已断开';
+                document.getElementById('status-text').style.color = 'red';
+            });
+            window.gameClient.client.on('reconnect', () => {
+                document.getElementById('status-text').innerText = '🔄 重连中...';
+            });
+        }
 
         // 消息处理
         window.gameClient.on('JOIN', (payload) => {
-            console.log('Host received JOIN:', payload);
+            log(`Received JOIN: ${payload.name}`);
             const { sender, name } = payload;
             
             // 确保不把自己算进去（虽然 host 页面不发 JOIN，但以防万一）
@@ -92,8 +121,9 @@
             if (!players[sender]) {
                 players[sender] = { name: name || 'Player ' + sender.substr(0,4), hand: [] };
                 updatePlayerList();
-                
-                // 可选：回发一个 ACK 确认收到，或者广播当前人数
+                log(`New player added: ${name}`);
+            } else {
+                log(`Player ${name} reconnected`);
             }
         });
 

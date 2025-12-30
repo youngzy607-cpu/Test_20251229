@@ -12,6 +12,9 @@
     <div class="container">
         <div class="header">
             <h3>房间: <span id="room-id-display"></span> | 玩家: <span id="player-name-display"></span></h3>
+             <div id="mqtt-status" style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                MQTT: <span id="status-text">连接中...</span>
+            </div>
         </div>
 
         <div id="join-overlay" style="text-align: center; margin-top: 50px;">
@@ -53,6 +56,8 @@
 
             // 连接 MQTT
             window.gameClient.connect(() => {
+                document.getElementById('status-text').innerText = '✅ 已连接';
+                document.getElementById('status-text').style.color = '#2ecc71';
                 console.log('Player connected, publishing JOIN to:', TOPIC_JOIN);
                 window.gameClient.subscribe(TOPIC_CMD);
                 
@@ -62,6 +67,17 @@
                     window.gameClient.publish(TOPIC_JOIN, 'JOIN', { name: name });
                 }, 500);
             });
+            
+             // 监听断线
+            if (window.gameClient.client) {
+                window.gameClient.client.on('offline', () => {
+                    document.getElementById('status-text').innerText = '❌ 已断开';
+                    document.getElementById('status-text').style.color = 'red';
+                });
+                window.gameClient.client.on('reconnect', () => {
+                    document.getElementById('status-text').innerText = '🔄 重连中...';
+                });
+            }
         }
 
         // 监听指令

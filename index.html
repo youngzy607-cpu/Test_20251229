@@ -32,9 +32,9 @@
             const params = new URLSearchParams(window.location.search);
             const roomParam = params.get('room');
             if (roomParam) {
-                document.getElementById('room-id').value = roomParam;
-                // 可选：如果带了房间号，自动跳转到玩家页？
-                // 为了避免误操作，这里只填入不自动跳，让用户点加入
+                // 自动保存并跳转
+                localStorage.setItem('kp_room_id', roomParam);
+                window.location.href = 'player.html';
             }
         });
 
