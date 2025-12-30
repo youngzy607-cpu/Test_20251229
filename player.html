@@ -146,15 +146,28 @@
 
         function renderHand() {
             const container = document.getElementById('cards-container');
-            container.innerHTML = myHand.map(num => `
-                <div class="hand-card" id="card-${num}">
-                    ${num}
+            container.innerHTML = myHand.map(card => {
+                let color = 'black';
+                if (['H', 'D'].includes(card.suit)) color = '#e74c3c';
+                if (card.suit === 'J' && card.value === 'Big') color = '#e74c3c';
+                
+                let suitIcon = '';
+                if (card.suit === 'S') suitIcon = '♠';
+                if (card.suit === 'H') suitIcon = '♥';
+                if (card.suit === 'C') suitIcon = '♣';
+                if (card.suit === 'D') suitIcon = '♦';
+                if (card.suit === 'J') suitIcon = '🃏';
+                
+                return `
+                <div class="hand-card" id="card-${card.id}" style="color: ${color}">
+                    <div style="font-size: 0.8rem;">${suitIcon}</div>
+                    <div style="font-size: 1.2rem; font-weight: bold;">${card.value}</div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
-        function markBallPocketed(num) {
-            const card = document.getElementById(`card-${num}`);
+        function markBallPocketed(id) {
+            const card = document.getElementById(`card-${id}`);
             if (card) {
                 card.classList.add('pocketed');
                 // 可以加个震动反馈

@@ -51,18 +51,25 @@
 
         <!-- 阶段2: 游戏进行中 -->
         <div id="game-phase" style="display: none;">
-            <h4>点击下方球号标记为“已打进”</h4>
-            <div class="ball-grid" id="ball-grid">
-                <!-- 生成 1-15 号球 -->
+            <h4>我的手牌</h4>
+            <div class="hand-container" id="host-hand-container">
+                <!-- 房主手牌显示在这里 -->
+            </div>
+
+            <hr style="border-color: #444; margin: 20px 0;">
+
+            <h4>点击下方扑克牌标记为“已打出”</h4>
+            <div class="ball-grid" id="ball-grid" style="grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px;">
+                <!-- 生成扑克牌 -->
             </div>
             
             <hr style="border-color: #444; margin: 20px 0;">
             
             <button class="btn btn-secondary" onclick="resetGame()">重置游戏 (重新发牌)</button>
             
-            <h4>玩家手牌状态监控</h4>
+            <h4>玩家连接状态</h4>
             <div id="monitor-area" style="font-size: 0.8rem; color: #aaa;">
-                <!-- 房主可见所有人的手牌，用于裁判 -->
+                <!-- 房主不可见手牌，只显示连接状态 -->
             </div>
         </div>
     </div>
@@ -156,31 +163,46 @@
             ).join('');
         }
 
-        // 生成球的 UI
+        // 生成扑克牌 UI
         const ballGrid = document.getElementById('ball-grid');
-        for (let i = 1; i <= 15; i++) {
+        const allCards = window.kellyLogic.cards; // 使用逻辑库中的牌
+        
+        allCards.forEach(card => {
             const ball = document.createElement('div');
-            ball.className = 'ball';
-            ball.dataset.num = i;
-            ball.innerText = i;
-            ball.onclick = () => toggleBall(i);
-            ballGrid.appendChild(ball);
-        }
-
-        function toggleBall(num) {
-            const ballElem = document.querySelector(`.ball[data-num="${num}"]`);
+            ball.className = 'ball card-item'; // 复用 ball 样式但增加 card-item
+            ball.dataset.id = card.id;
             
-            if (pocketedBalls.has(num)) {
+            // 显示内容
+            let display = card.value;
+            let color = 'black';
+            if (['H', 'D'].includes(card.suit)) color = '#e74c3c'; // Red
+            if (['S', 'C'].includes(card.suit)) color = 'black';
+            if (card.suit === 'J') color = card.value === 'Big' ? '#e74c3c' : 'black';
+            
+            let suitIcon = '';
+            if (card.suit === 'S') suitIcon = '♠';
+            if (card.suit === 'H') suitIcon = '♥';
+            if (card.suit === 'C') suitIcon = '♣';
+            if (card.suit === 'D') suitIcon = '♦';
+            if (card.suit === 'J') suitIcon = '🃏';
+            
+            ball.innerHTML = `<span style="color:${color}">${suitIcon}${display}</span>`;
+            ball.onclick = () => toggleBall(card.id);
+            ballGrid.appendChild(ball);
+        });
+
+        function toggleBall(id) {
+            const ballElem = document.querySelector(`.ball[data-id="${id}"]`);
+            
+            if (pocketedBalls.has(id)) {
                 // 撤销打进 (暂不支持，MVP 简化逻辑：一旦打进就打进了)
-                // pocketedBalls.delete(num);
-                // ballElem.classList.remove('pocketed');
                 return; 
             } else {
-                pocketedBalls.add(num);
+                pocketedBalls.add(id);
                 ballElem.classList.add('pocketed');
                 
                 // 广播球已打进
-                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { ball: num });
+                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { ball: id });
                 
                 // 更新监控视图
                 updateMonitor();
@@ -188,9 +210,20 @@
         }
 
         function startGame() {
-            const playerIds = Object.keys(players);
-            if (playerIds.length === 0) return alert('没有玩家加入！');
+            // 房主也作为玩家参与，需要先确保房主在 players 列表中
+            // 使用特殊的 HOST ID
+            const hostId = 'HOST_PLAYER';
+            if (!players[hostId]) {
+                players[hostId] = { name: '房主 (我)', hand: [] };
+            }
 
+            const playerIds = Object.keys(players);
+            // playerIds 已经包含了 HOST_PLAYER
+            if (playerIds.length === 0) return alert('没有玩家加入！');
+            
+            // 默认每人发牌数调整：如果未设置，尝试发完所有牌
+            // 54张牌，如果是4人，每人13张，余2张。
+            // 逻辑库已经处理了平均分发
             const countPerPlayer = parseInt(document.getElementById('card-count').value) || 0;
             
             // 调用逻辑库发牌
@@ -200,6 +233,9 @@
             Object.keys(hands).forEach(pid => {
                 players[pid].hand = hands[pid];
             });
+
+            // 房主渲染自己的手牌
+            renderHostHand(players[hostId].hand);
 
             // 广播发牌信息 (点对点发送其实也是广播，客户端自己过滤)
             window.gameClient.publish(TOPIC_CMD, 'DEAL', { hands: hands });
@@ -229,14 +265,46 @@
             let html = '';
             Object.keys(players).forEach(pid => {
                 const p = players[pid];
-                const handHtml = p.hand.map(card => {
-                    const isPocketed = pocketedBalls.has(card);
-                    return `<span style="color:${isPocketed ? 'red;text-decoration:line-through' : 'white'}">${card}</span>`;
-                }).join(', ');
-                html += `<div>${p.name}: [${handHtml}]</div>`;
+                // 仅显示名字和在线状态，不显示手牌
+                html += `<div>${p.name}: 已连接 (手牌已发: ${p.hand.length}张)</div>`;
             });
             monitor.innerHTML = html;
         }
+
+        function renderHostHand(hand) {
+            const container = document.getElementById('host-hand-container');
+            container.innerHTML = hand.map(card => {
+                let color = 'black';
+                if (['H', 'D'].includes(card.suit)) color = '#e74c3c';
+                if (card.suit === 'J' && card.value === 'Big') color = '#e74c3c';
+                
+                let suitIcon = '';
+                if (card.suit === 'S') suitIcon = '♠';
+                if (card.suit === 'H') suitIcon = '♥';
+                if (card.suit === 'C') suitIcon = '♣';
+                if (card.suit === 'D') suitIcon = '♦';
+                if (card.suit === 'J') suitIcon = '🃏';
+                
+                const isPocketed = pocketedBalls.has(card.id);
+
+                return `
+                <div class="hand-card ${isPocketed ? 'pocketed' : ''}" id="host-card-${card.id}" style="color: ${color}">
+                    <div style="font-size: 0.8rem;">${suitIcon}</div>
+                    <div style="font-size: 1.2rem; font-weight: bold;">${card.value}</div>
+                </div>
+            `}).join('');
+        }
+
+        // 监听 BALL_POCKETED 来更新房主手牌 UI
+        window.gameClient.on('BALL_POCKETED', (payload) => {
+             // 房主自己界面也得更新打叉状态
+             // 其实 toggleBall 已经处理了 pocketedBalls，这里主要刷新手牌区域
+             const { ball } = payload;
+             const cardElem = document.getElementById(`host-card-${ball}`);
+             if(cardElem) {
+                 cardElem.classList.add('pocketed');
+             }
+        });
     </script>
 </body>
 </html>

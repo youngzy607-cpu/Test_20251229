@@ -4,7 +4,7 @@
     --danger-color: #e74c3c;
     --text-color: #ffffff;
     --bg-color: #121212;
-    --card-bg: #2c3e50;
+    --card-bg: #ecf0f1;
 }
 
 body {
@@ -73,87 +73,86 @@ input {
     box-sizing: border-box;
 }
 
-/* Ball Styles */
+/* Ball/Card Grid Styles */
 .ball-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
+    /* grid-template-columns set inline in host.html for auto-fill */
+    gap: 8px;
     padding: 10px;
 }
 
 .ball {
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: white;
+    /* Base style for grid items */
+    background: var(--card-bg);
     color: black;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    font-size: 1.2rem;
+    font-size: 1rem;
     cursor: pointer;
-    box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     position: relative;
     border: 2px solid transparent;
+    user-select: none;
+}
+
+/* Specific Card Style overrides */
+.ball.card-item {
+    aspect-ratio: 2/3; /* Standard card ratio */
+    border-radius: 4px;
+    flex-direction: column;
+    padding: 2px;
 }
 
 .ball.pocketed {
-    opacity: 0.3;
+    opacity: 0.4;
     background: #555;
-    color: #888;
+    color: #888 !important; /* Force gray text */
     box-shadow: none;
 }
-
-.ball.selected {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 10px var(--accent-color);
+.ball.pocketed span {
+    color: #888 !important;
+    text-decoration: line-through;
 }
-
-/* 1-8 Solids, 9-15 Stripes logic usually handled by JS or detailed classes, 
-   for MVP we just use colors based on standard pool ball colors */
-.ball[data-num="1"], .ball[data-num="9"] { background: #f1c40f; } /* Yellow */
-.ball[data-num="2"], .ball[data-num="10"] { background: #3498db; } /* Blue */
-.ball[data-num="3"], .ball[data-num="11"] { background: #e74c3c; } /* Red */
-.ball[data-num="4"], .ball[data-num="12"] { background: #9b59b6; } /* Purple */
-.ball[data-num="5"], .ball[data-num="13"] { background: #e67e22; } /* Orange */
-.ball[data-num="6"], .ball[data-num="14"] { background: #2ecc71; } /* Green */
-.ball[data-num="7"], .ball[data-num="15"] { background: #8e44ad; } /* Maroon */
-.ball[data-num="8"] { background: #000000; color: white; } /* Black */
 
 /* Player Hand View */
 .hand-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 20px;
+    gap: 15px;
     margin-top: 30px;
 }
 
 .hand-card {
-    width: 80px;
-    height: 120px;
-    background: white;
-    border-radius: 10px;
+    width: 70px;
+    height: 105px;
+    background: var(--card-bg);
+    border-radius: 8px;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: 2rem;
+    font-size: 1.5rem;
     color: black;
     font-weight: bold;
     position: relative;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
 .hand-card.pocketed {
     background: #555;
-    color: #999;
-    text-decoration: line-through;
+    color: #999 !important;
+}
+.hand-card.pocketed div {
+    color: #999 !important;
 }
 
 .hand-card.pocketed::after {
     content: '❌';
     position: absolute;
-    font-size: 3rem;
+    font-size: 2.5rem;
     opacity: 0.8;
 }
 
