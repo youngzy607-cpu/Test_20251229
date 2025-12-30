@@ -121,9 +121,9 @@
             // 修正逻辑：DEAL 消息里的 key 是 clientId
             // 我们需要知道自己的 clientId。mqtt.js client.options.clientId 可能获取不到，
             // 但我们在 publish JOIN 时发送了 sender。
-            // 实际上 mqtt-client.js 里发送消息时自动加了 sender 字段等于 MQTT_CONFIG.clientId
+            // 实际上 mqtt-client.js 里发送消息时自动加了 sender 字段等于 BASE_CLIENT_ID
             
-            const myCards = payload.hands[MQTT_CONFIG.clientId];
+            const myCards = payload.hands[window.MQTT_CLIENT_ID];
             
             if (myCards) {
                 myHand = myCards;

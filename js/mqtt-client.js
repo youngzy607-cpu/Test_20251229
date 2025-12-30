@@ -128,3 +128,5 @@ class GameClient {
 
 // 导出单例
 window.gameClient = new GameClient();
+// 暴露 Client ID 供外部使用
+window.MQTT_CLIENT_ID = BASE_CLIENT_ID;
