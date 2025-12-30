@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房主控制台 - Kelly Pool</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="lib/mqtt.min.js"></script>
+    <script src="js/mqtt-client.js"></script>
+    <script src="js/game-logic.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h3>房主控制台 | 房间: <span id="room-display">...</span></h3>
+        </div>
+
+        <!-- 阶段1: 等待玩家 -->
+        <div id="setup-phase">
+            <h4>已加入玩家 (<span id="player-count">0</span>)</h4>
+            <ul id="player-list" class="player-list">
+                <!-- <li>Player 1 <span class="status-badge online">在线</span></li> -->
+            </ul>
+            <div class="input-group">
+                <label>每人发牌数 (0=自动平均):</label>
+                <input type="number" id="card-count" value="0" min="0" max="15">
+            </div>
+            <button class="btn btn-primary" onclick="startGame()">开始发牌</button>
+        </div>
+
+        <!-- 阶段2: 游戏进行中 -->
+        <div id="game-phase" style="display: none;">
+            <h4>点击下方球号标记为“已打进”</h4>
+            <div class="ball-grid" id="ball-grid">
+                <!-- 生成 1-15 号球 -->
+            </div>
+            
+            <hr style="border-color: #444; margin: 20px 0;">
+            
+            <button class="btn btn-secondary" onclick="resetGame()">重置游戏 (重新发牌)</button>
+            
+            <h4>玩家手牌状态监控</h4>
+            <div id="monitor-area" style="font-size: 0.8rem; color: #aaa;">
+                <!-- 房主可见所有人的手牌，用于裁判 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const roomId = localStorage.getItem('kp_room_id');
+        if (!roomId) window.location.href = 'index.html';
+        document.getElementById('room-display').innerText = roomId;
+
+        const players = {}; // { clientId: { name: 'xxx', hand: [] } }
+        let pocketedBalls = new Set();
+        
+        // Topic 定义
+        const TOPIC_JOIN = `kp/${roomId}/join`;
+        const TOPIC_CMD = `kp/${roomId}/cmd`;
+
+        // 初始化 MQTT
+        window.gameClient.connect(() => {
+            window.gameClient.subscribe(TOPIC_JOIN);
+            
+            // 广播自己是 Host，让刚进来的玩家知道游戏状态
+            // 简单起见，主要靠玩家发 JOIN 触发
+        });
+
+        // 消息处理
+        window.gameClient.on('JOIN', (payload) => {
+            const { sender, name } = payload;
+            if (!players[sender]) {
+                players[sender] = { name: name || 'Player ' + sender.substr(0,4), hand: [] };
+                updatePlayerList();
+                
+                // 如果游戏已经开始，可能需要重发状态给重连的玩家
+                // 这里 MVP 暂简化：中途加入只能等下一局
+            }
+        });
+
+        function updatePlayerList() {
+            const list = document.getElementById('player-list');
+            document.getElementById('player-count').innerText = Object.keys(players).length;
+            list.innerHTML = Object.keys(players).map(pid => 
+                `<li class="player-item">
+                    ${players[pid].name} 
+                    <span class="status-badge online">已连接</span>
+                </li>`
+            ).join('');
+        }
+
+        // 生成球的 UI
+        const ballGrid = document.getElementById('ball-grid');
+        for (let i = 1; i <= 15; i++) {
+            const ball = document.createElement('div');
+            ball.className = 'ball';
+            ball.dataset.num = i;
+            ball.innerText = i;
+            ball.onclick = () => toggleBall(i);
+            ballGrid.appendChild(ball);
+        }
+
+        function toggleBall(num) {
+            const ballElem = document.querySelector(`.ball[data-num="${num}"]`);
+            
+            if (pocketedBalls.has(num)) {
+                // 撤销打进 (暂不支持，MVP 简化逻辑：一旦打进就打进了)
+                // pocketedBalls.delete(num);
+                // ballElem.classList.remove('pocketed');
+                return; 
+            } else {
+                pocketedBalls.add(num);
+                ballElem.classList.add('pocketed');
+                
+                // 广播球已打进
+                window.gameClient.publish(TOPIC_CMD, 'BALL_POCKETED', { ball: num });
+                
+                // 更新监控视图
+                updateMonitor();
+            }
+        }
+
+        function startGame() {
+            const playerIds = Object.keys(players);
+            if (playerIds.length === 0) return alert('没有玩家加入！');
+
+            const countPerPlayer = parseInt(document.getElementById('card-count').value) || 0;
+            
+            // 调用逻辑库发牌
+            const hands = window.kellyLogic.deal(playerIds, countPerPlayer);
+            
+            // 保存状态
+            Object.keys(hands).forEach(pid => {
+                players[pid].hand = hands[pid];
+            });
+
+            // 广播发牌信息 (点对点发送其实也是广播，客户端自己过滤)
+            window.gameClient.publish(TOPIC_CMD, 'DEAL', { hands: hands });
+
+            // 切换 UI
+            document.getElementById('setup-phase').style.display = 'none';
+            document.getElementById('game-phase').style.display = 'block';
+            pocketedBalls.clear();
+            
+            // 重置球 UI
+            document.querySelectorAll('.ball').forEach(b => b.classList.remove('pocketed'));
+            updateMonitor();
+        }
+
+        function resetGame() {
+            if(confirm('确定要重新开始吗？所有手牌将重洗。')) {
+                document.getElementById('setup-phase').style.display = 'block';
+                document.getElementById('game-phase').style.display = 'none';
+                
+                // 广播重置
+                window.gameClient.publish(TOPIC_CMD, 'RESET');
+            }
+        }
+
+        function updateMonitor() {
+            const monitor = document.getElementById('monitor-area');
+            let html = '';
+            Object.keys(players).forEach(pid => {
+                const p = players[pid];
+                const handHtml = p.hand.map(card => {
+                    const isPocketed = pocketedBalls.has(card);
+                    return `<span style="color:${isPocketed ? 'red;text-decoration:line-through' : 'white'}">${card}</span>`;
+                }).join(', ');
+                html += `<div>${p.name}: [${handHtml}]</div>`;
+            });
+            monitor.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

@@ -3,43 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>欢迎页 - 同步展示</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="lib/qrcode.min.js"></script>
+    <title>Kelly Pool 分牌助手</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="lib/mqtt.min.js"></script>
+    <script src="js/mqtt-client.js"></script>
 </head>
 <body>
     <div class="container">
-        <!-- 退出全屏提示 -->
-        <div class="exit-hint">双击屏幕退出全屏</div>
-
-        <div class="card">
-            <div class="header">
-                <span class="status-dot"></span>
-                <span class="status-text">实时链接模式</span>
+        <h1>🎱 Kelly Pool 助手</h1>
+        
+        <div id="lobby-screen">
+            <div class="input-group">
+                <input type="text" id="room-id" placeholder="输入房间号 (例如 888)" maxlength="6">
             </div>
             
-            <div id="welcome-text" contenteditable="true" class="welcome-text">
-                欢迎
-            </div>
-
-            <!-- 新增全屏演示按钮 -->
-            <button id="fullscreen-btn" class="fullscreen-btn" title="全屏展示模式">
-                📺 全屏/演示模式
-            </button>
-
-            <p class="instruction">
-                👆 点击上方文字可直接修改 <br>
-                修改后点击下方按钮生成二维码分享
-            </p>
-
-            <button id="share-btn" class="share-btn">
-                生成分享二维码
-            </button>
-
-            <div id="qrcode-container"></div>
+            <button class="btn btn-primary" onclick="joinRoom()">加入房间 (我是玩家)</button>
+            <button class="btn btn-secondary" onclick="createRoom()">我是房主 (创建游戏)</button>
         </div>
+
+        <p style="text-align: center; color: #666; font-size: 0.9rem; margin-top: 50px;">
+            基于 MQTT 实时同步 · 无需后端 · 纯静态
+        </p>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        function joinRoom() {
+            const roomId = document.getElementById('room-id').value.trim();
+            if (!roomId) return alert('请输入房间号');
+            
+            // 存储房间号，跳转到玩家页
+            localStorage.setItem('kp_room_id', roomId);
+            window.location.href = 'player.html';
+        }
+
+        function createRoom() {
+            const roomId = document.getElementById('room-id').value.trim() || Math.floor(1000 + Math.random() * 9000);
+            
+            // 存储房间号，跳转到房主页
+            localStorage.setItem('kp_room_id', roomId);
+            window.location.href = 'host.html';
+        }
+    </script>
 </body>
 </html>

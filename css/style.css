@@ -1,0 +1,189 @@
+:root {
+    --primary-color: #1a1a1a;
+    --accent-color: #2ecc71;
+    --danger-color: #e74c3c;
+    --text-color: #ffffff;
+    --bg-color: #121212;
+    --card-bg: #2c3e50;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+h1, h2, h3 {
+    text-align: center;
+    font-weight: 300;
+}
+
+.btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #34495e;
+    color: white;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+input {
+    width: 100%;
+    padding: 15px;
+    margin: 5px 0;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #333;
+    color: white;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+/* Ball Styles */
+.ball-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    padding: 10px;
+}
+
+.ball {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: white;
+    color: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5);
+    position: relative;
+    border: 2px solid transparent;
+}
+
+.ball.pocketed {
+    opacity: 0.3;
+    background: #555;
+    color: #888;
+    box-shadow: none;
+}
+
+.ball.selected {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+/* 1-8 Solids, 9-15 Stripes logic usually handled by JS or detailed classes, 
+   for MVP we just use colors based on standard pool ball colors */
+.ball[data-num="1"], .ball[data-num="9"] { background: #f1c40f; } /* Yellow */
+.ball[data-num="2"], .ball[data-num="10"] { background: #3498db; } /* Blue */
+.ball[data-num="3"], .ball[data-num="11"] { background: #e74c3c; } /* Red */
+.ball[data-num="4"], .ball[data-num="12"] { background: #9b59b6; } /* Purple */
+.ball[data-num="5"], .ball[data-num="13"] { background: #e67e22; } /* Orange */
+.ball[data-num="6"], .ball[data-num="14"] { background: #2ecc71; } /* Green */
+.ball[data-num="7"], .ball[data-num="15"] { background: #8e44ad; } /* Maroon */
+.ball[data-num="8"] { background: #000000; color: white; } /* Black */
+
+/* Player Hand View */
+.hand-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.hand-card {
+    width: 80px;
+    height: 120px;
+    background: white;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    color: black;
+    font-weight: bold;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.hand-card.pocketed {
+    background: #555;
+    color: #999;
+    text-decoration: line-through;
+}
+
+.hand-card.pocketed::after {
+    content: '❌';
+    position: absolute;
+    font-size: 3rem;
+    opacity: 0.8;
+}
+
+.player-list {
+    list-style: none;
+    padding: 0;
+}
+
+.player-item {
+    background: #333;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.status-badge {
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #555;
+}
+
+.status-badge.online {
+    background: var(--accent-color);
+}
+
+.loading {
+    text-align: center;
+    margin-top: 50px;
+    color: #888;
+}

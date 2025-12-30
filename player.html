@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玩家手牌 - Kelly Pool</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="lib/mqtt.min.js"></script>
+    <script src="js/mqtt-client.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h3>房间: <span id="room-id-display"></span> | 玩家: <span id="player-name-display"></span></h3>
+        </div>
+
+        <div id="join-overlay" style="text-align: center; margin-top: 50px;">
+            <input type="text" id="player-name" placeholder="输入你的昵称">
+            <button class="btn btn-primary" onclick="confirmJoin()">确认加入</button>
+        </div>
+
+        <div id="waiting-msg" style="display: none; text-align: center; margin-top: 50px;">
+            <div class="loading">等待房主发牌...</div>
+        </div>
+
+        <div id="hand-area" style="display: none;">
+            <h2 style="margin-bottom: 30px;">你的手牌</h2>
+            <div class="hand-container" id="cards-container">
+                <!-- 手牌将显示在这里 -->
+            </div>
+            <p style="text-align: center; color: #666; margin-top: 30px; font-size: 0.8rem;">
+                当对应的球被打进时，手牌会自动打叉
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const roomId = localStorage.getItem('kp_room_id');
+        if (!roomId) window.location.href = 'index.html';
+        document.getElementById('room-id-display').innerText = roomId;
+
+        const TOPIC_JOIN = `kp/${roomId}/join`;
+        const TOPIC_CMD = `kp/${roomId}/cmd`;
+        let myHand = [];
+
+        function confirmJoin() {
+            const name = document.getElementById('player-name').value.trim();
+            if (!name) return alert('请输入昵称');
+            
+            document.getElementById('player-name-display').innerText = name;
+            document.getElementById('join-overlay').style.display = 'none';
+            document.getElementById('waiting-msg').style.display = 'block';
+
+            // 连接 MQTT
+            window.gameClient.connect(() => {
+                window.gameClient.subscribe(TOPIC_CMD);
+                
+                // 发送加入消息
+                window.gameClient.publish(TOPIC_JOIN, 'JOIN', { name: name });
+            });
+        }
+
+        // 监听指令
+        window.gameClient.on('DEAL', (payload) => {
+            console.log('Received DEAL', payload);
+            const myId = window.gameClient.client.options.clientId; // 获取当前 clientId
+            
+            // 在 payload.hands 中查找自己的牌
+            // 注意：因为 mqtt clientId 在每次 connect 时如果是随机生成的，需要保持一致
+            // 在 mqtt-client.js 中我们生成了一次随机 ID，只要不刷新页面就是稳定的
+            // 但如果房主用的 ID 是 sender 字段，我们需要匹配 sender
+            
+            // 修正逻辑：DEAL 消息里的 key 是 clientId
+            // 我们需要知道自己的 clientId。mqtt.js client.options.clientId 可能获取不到，
+            // 但我们在 publish JOIN 时发送了 sender。
+            // 实际上 mqtt-client.js 里发送消息时自动加了 sender 字段等于 MQTT_CONFIG.clientId
+            
+            const myCards = payload.hands[MQTT_CONFIG.clientId];
+            
+            if (myCards) {
+                myHand = myCards;
+                renderHand();
+                document.getElementById('waiting-msg').style.display = 'none';
+                document.getElementById('hand-area').style.display = 'block';
+            }
+        });
+
+        window.gameClient.on('BALL_POCKETED', (payload) => {
+            const { ball } = payload;
+            markBallPocketed(ball);
+        });
+
+        window.gameClient.on('RESET', () => {
+            myHand = [];
+            document.getElementById('hand-area').style.display = 'none';
+            document.getElementById('waiting-msg').style.display = 'block';
+        });
+
+        function renderHand() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = myHand.map(num => `
+                <div class="hand-card" id="card-${num}">
+                    ${num}
+                </div>
+            `).join('');
+        }
+
+        function markBallPocketed(num) {
+            const card = document.getElementById(`card-${num}`);
+            if (card) {
+                card.classList.add('pocketed');
+                // 可以加个震动反馈
+                if (navigator.vibrate) navigator.vibrate(200);
+            }
+        }
+    </script>
+</body>
+</html>
