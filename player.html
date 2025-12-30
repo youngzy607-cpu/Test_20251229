@@ -24,6 +24,10 @@
 
         <div id="waiting-msg" style="display: none; text-align: center; margin-top: 50px;">
             <div class="loading">等待房主发牌...</div>
+            <p style="font-size: 0.8rem; color: #888; margin-top: 20px;">
+                如果房主没看到你，请点击：<br>
+                <button class="btn btn-secondary" style="width: auto; margin-top: 10px;" onclick="resendJoin()">👋 我在这里 (重发加入)</button>
+            </p>
         </div>
 
         <div id="hand-area" style="display: none;">
@@ -63,8 +67,7 @@
                 
                 // 延时一点确保订阅成功
                 setTimeout(() => {
-                    // 发送加入消息
-                    window.gameClient.publish(TOPIC_JOIN, 'JOIN', { name: name });
+                    resendJoin(); // 使用封装的函数发送
                 }, 500);
             });
             
@@ -79,8 +82,33 @@
                 });
             }
         }
+        
+        function resendJoin() {
+            const name = document.getElementById('player-name').value.trim();
+            if(name) {
+                // 使用 QoS 1 确保送达 (mqtt.js默认QoS 0，但在不可靠网络下最好用1，不过ws通常可靠)
+                // 这里我们简单多次发送或者手动发送即可
+                window.gameClient.publish(TOPIC_JOIN, 'JOIN', { name: name });
+                
+                // 简单的视觉反馈
+                const btn = document.querySelector('button[onclick="resendJoin()"]');
+                if(btn) {
+                    const originalText = btn.innerText;
+                    btn.innerText = '已发送!';
+                    setTimeout(() => btn.innerText = originalText, 2000);
+                }
+            }
+        }
 
         // 监听指令
+        window.gameClient.on('REPORT_STATUS', () => {
+            console.log('Host requested status report');
+            const name = document.getElementById('player-name').value.trim();
+            if (name) {
+                window.gameClient.publish(TOPIC_JOIN, 'REPORT_ACK', { name: name });
+            }
+        });
+
         window.gameClient.on('DEAL', (payload) => {
             console.log('Received DEAL', payload);
             const myId = window.gameClient.client.options.clientId; // 获取当前 clientId

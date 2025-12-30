@@ -23,11 +23,17 @@
         <div id="setup-phase">
             <div style="text-align: center; margin-bottom: 20px;">
                 <div id="qrcode" style="display: inline-block; padding: 10px; background: white; border-radius: 8px;"></div>
-                <p style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">扫码或复制链接加入</p>
+                <p style="font-size: 0.8rem; color: #e74c3c; margin-top: 5px; font-weight: bold;">
+                    ⚠️ 请使用手机系统相机/浏览器扫码<br>
+                    (微信扫码可能无法直接跳转)
+                </p>
                 <input type="text" id="share-link" readonly style="font-size: 0.8rem; padding: 5px; width: 80%; background: #222; border: 1px solid #444; color: #aaa;" onclick="this.select()">
             </div>
 
-            <h4>已加入玩家 (<span id="player-count">0</span>)</h4>
+            <h4>
+                已加入玩家 (<span id="player-count">0</span>) 
+                <button class="btn btn-secondary" style="width: auto; padding: 5px 10px; font-size: 0.8rem; display: inline-block;" onclick="refreshPlayers()">🔄 刷新列表</button>
+            </h4>
             <ul id="player-list" class="player-list">
                 <!-- <li>Player 1 <span class="status-badge online">在线</span></li> -->
             </ul>
@@ -110,22 +116,34 @@
             });
         }
 
+        function refreshPlayers() {
+            log('Requesting status from all players...');
+            // 请求所有人上报状态
+            window.gameClient.publish(TOPIC_CMD, 'REPORT_STATUS', {});
+        }
+
         // 消息处理
         window.gameClient.on('JOIN', (payload) => {
-            log(`Received JOIN: ${payload.name}`);
+            handleJoin(payload);
+        });
+        
+        // 监听 REPORT_ACK (玩家响应刷新)
+        window.gameClient.on('REPORT_ACK', (payload) => {
+            handleJoin(payload); // 逻辑一样，都是添加玩家
+        });
+
+        function handleJoin(payload) {
+            log(`Received JOIN/ACK: ${payload.name}`);
             const { sender, name } = payload;
-            
-            // 确保不把自己算进去（虽然 host 页面不发 JOIN，但以防万一）
-            // 注意：sender 是发送者的 clientId
             
             if (!players[sender]) {
                 players[sender] = { name: name || 'Player ' + sender.substr(0,4), hand: [] };
                 updatePlayerList();
                 log(`New player added: ${name}`);
             } else {
-                log(`Player ${name} reconnected`);
+                // 更新最后活跃时间等
             }
-        });
+        }
 
         function updatePlayerList() {
             const list = document.getElementById('player-list');
